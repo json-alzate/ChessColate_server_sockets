@@ -1,5 +1,5 @@
 var app = require('express')();
-const axios = require('axios').default;
+const axios = require('axios').default; // http request
 var fs = require('fs');
 
 /**
@@ -18,7 +18,7 @@ var admin = require('firebase-admin');
 /**
  * PRODUCCIÓN
  */
-const serviceAccount = require("./");
+const serviceAccount = require("./private/chesscolate-firebase-adminsdk-z54d6-ffdbf8e69f.json");
 
 
 
@@ -44,7 +44,7 @@ app.get('/', (req, res) => res.send('buuuu!'));
 
 
 io.on('connection', (socket) => {
-    
+
     socket.on('socket-name', (receive) => {
 
         io.emit('socket-emit', receive);
