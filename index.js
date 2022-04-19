@@ -74,10 +74,10 @@ io.on('connection', (socket) => {
      * - country: string 3 characters
      * - createAt: number (auto generado al ingresar al bote) / fecha para dar prioridad si lleva mucho tiempo esperando
      */
-    socket.on('1_in_game_requestGame', (data1Receive) => {
-        ejectGameMatch(data1Receive).then((gameReady) => {
-            gGames.push(gameReady);
-            io.emit('2_out_game_match', gameReady);
+    socket.on('1_in_matchEngine_requestGame', (userRequestToPlay) => {
+        ejectGameMatch(userRequestToPlay).then((result) => {
+            gGames.push(result);
+            io.emit('2_out_matchEngine_readyMatch', result);
         });
     });
 
@@ -104,69 +104,84 @@ http.listen(3000, () => {
  * Functions
  */
 
-// TODO: debe retornar una promesa que se resuelva si se hace el match y retorna el objeto del juego
+// Retorna una promesa que se resuelva si se hace el match y retorna el objeto del juego
 //  o error si no tiene usuario para emparejar
-function ejectGameMatch(data1Receive) {
+function ejectGameMatch(userRequestToPlay) {
 
     return new Promise((resolve, reject) => {
 
         if (gBoat.length > 0) {
+
             // por tiempo
-            let filtered = gBoat.filter(item => item.time === data1Receive.time);
-            const color = data1Receive.color === 'random' ? getRandomColor() : data1Receive.color;
-            // por color
-            filtered = filtered.filter(item => item.color !== color);
+            let filtered = gBoat.filter(item => item.time === userRequestToPlay.time);
+
+            // filtrar por color solo si el usuario selecciono un color
+            if (userRequestToPlay.color !== 'random') {
+                // por color
+                filtered = filtered.filter(item => item.color !== userRequestToPlay.color);
+            }
+
             // por elo
-            filtered = filtered.filter(item => (item.elo <= data1Receive.elo + 100 && item.elo >= data1Receive.elo - 100));
+            filtered = filtered.filter(item => (item.elo <= userRequestToPlay.elo + 100 && item.elo >= userRequestToPlay.elo - 100));
             // por idioma (no prioritario)
-            const filteredLang = filtered.filter(item => item.lang === data1Receive.lang);
+            const filteredLang = filtered.filter(item => item.lang === userRequestToPlay.lang);
             filtered = filteredLang.length > 0 ? filteredLang : filtered;
-            // por pais (no prioritario)
-            const filteredCountry = filtered.filter(item => item.country === data1Receive.country);
+            // por país (no prioritario)
+            const filteredCountry = filtered.filter(item => item.country === userRequestToPlay.country);
             filtered = filteredCountry.length > 0 ? filteredCountry : filtered;
 
             let match;
 
-            if (filtered.length > 1) { // Si aun se tienen muchos prospectos, se elije uno al azar
+            if (filtered.length > 1) { // Si aun se tienen muchos prospectors, se elije uno al azar
                 match = filtered[Math.floor(Math.random() * filtered.length)];
             } else if (filtered.length === 1) {
                 match = filtered[0]; // si solo tiene uno, se toma
             }
 
             if (match) {
-                generateNewGame(match, data1Receive).the((game) => {
+                // Aquí se debe organizar los colores
+                generateNewGame(match, userRequestToPlay).the((game) => {
                     // Se elimina con quien se hizo match del bote
                     deleteItemBoat(match);
-                    // finalmente se genera el nuevo juego que se emitira
-                    resolve(game);
+                    // finalmente se genera el nuevo juego que se emitirá
+                    resolve(game); // único resolve
                 });
             } else {
                 // No tiene nadie con quien hacer match, se incorpora al bote,
                 // y queda a la espera de que llegue un competidor
-                gBoat.push(data1Receive);
+                addToBoat(userRequestToPlay);
                 reject();
             }
 
 
         } else if (gBoat.length === 0 && gReadyListenBoat) { // si el bote esta vacio, y ya se consulto a firestore, simplemente se adiciona la solicitud al bote
-            const toAddBoat = {
-                ...data1Receive,
-                createAt: new Date().getTime()
-            };
-            gBoat.push(data1Receive);
+            addToBoat(userRequestToPlay);
             reject();
         } else {
-            // escucha el bote de respaldo (es un inicio o un reinicio del serve)
+            // escucha el bote de respaldo (es un inicio o un reinicio del server)
             listenFirestoreBoat();
         }
     });
 
 }
 
-// Genera un string con el valor 'white' o 'black'
-// TODO generar random
-function getRandomColor() {
+function addToBoat(userRequestToPlay) {
+    const toAddBoat = {
+        ...userRequestToPlay,
+        createAt: new Date().getTime()
+    };
+    gBoat.push(toAddBoat);
+}
 
+// se elimina un item del bote
+function deleteItemBoat(match) {
+    const toDelete = gBoat.findIndex(item => item.createAt === match.createAt);
+    gBoat.splice(toDelete, 1);
+}
+
+// Genera un string con el valor 'white' o 'black'
+function getRandomColor() {
+    return Math.random() < 0.5 ? 'white' : 'black';
 }
 
 // TODO retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
@@ -176,11 +191,7 @@ function generateNewGame(player1, player2) {
     });
 }
 
-// se elimina un item del bote
-function deleteItemBoat(match) {
-    const toDelete = gBoat.findIndex(item => item.createAt === match.createAt);
-    gBoat.splice(toDelete, 1);
-}
+
 
 // TODO: debe retornar una promesa que se resuelva si se guarda la jugada 
 //  o error si la jugada es ilegal
