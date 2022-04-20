@@ -81,7 +81,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 3 cuando un usuario envia una jugada
+    // 3 cuando un usuario enviá una jugada
     /**
      * - uidUser
      * - move
@@ -187,6 +187,28 @@ function getRandomColor() {
 // TODO retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
 function generateNewGame(player1, player2) {
     return new Promise((resolve, reject) => {
+
+        // Se organizan los colores
+        if (player1.color === 'random' && player2.color === 'random') {
+            const randomColor = getRandomColor();
+            player1.color = randomColor;
+            player2.color = randomColor === 'white' ? 'black' : 'white';
+        } else if (player1.color !== 'random') {
+            player2.color = player1.color === 'white' ? 'black' : 'white';
+        } else if (player2.color !== 'random') {
+            player1.color = player2.color === 'white' ? 'black' : 'white';
+        }
+
+        // FIXME solo para ejecutar pruebas 
+        const newGame = {
+            uid: String(new Date().getTime()),
+            white: player1.color === 'white' ? player1 : player2,
+            black: player2.color === 'black' ? player2 : player1,
+            time: player1.time,
+            createAt: new Date().getTime() 
+        };
+
+        resolve(newGame);
 
     });
 }
