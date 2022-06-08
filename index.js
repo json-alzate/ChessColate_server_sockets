@@ -43,9 +43,14 @@ const io = require('socket.io')(http, {
 
 app.get('/', (req, res) => res.send('buuuu!'));
 
-// bote donde están las solicitudes de juego para emparejar   
+/**
+ * bote donde están las solicitudes de juego para emparejar 
+ */ 
 const gBoat = [];
-// para saber si ya se esta escuchando la collection del bote en firestore
+
+/**
+ * Permite saber si ya se esta escuchando la collection del bote en firestore
+ */
 let gReadyListenBoat = false;
 
 // juegos en curso
@@ -168,7 +173,7 @@ function ejectGameMatch(userRequestToPlay) {
             }
             
             
-        } else if (gBoat.length === 0 && gReadyListenBoat) { // si el bote esta vacio, y ya se consulto a firestore, simplemente se adiciona la solicitud al bote
+        } else if (gBoat.length === 0 && gReadyListenBoat) { // si el bote esta vació, y ya se consulto a firestore, simplemente se adiciona la solicitud al bote
             addToBoat(userRequestToPlay);
             reject(false);
         } else {
