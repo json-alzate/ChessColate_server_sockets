@@ -1,4 +1,4 @@
-# Ionic-Angular crear libreria y subirla a npm.<!-- omit in toc -->
+# Servidor ChessColate sockets.<!-- omit in toc -->
 
 ### Tabla de Contenido<!-- omit in toc -->
 
