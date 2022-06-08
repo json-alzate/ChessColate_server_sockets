@@ -37,7 +37,8 @@ const db = admin.firestore();
 const io = require('socket.io')(http, {
     cors: {
         origin: '*',
-    }
+    },
+    pingInterval: 2000
 });
 
 app.get('/', (req, res) => res.send('buuuu!'));
@@ -52,6 +53,7 @@ const gGames = [];
 let gReadyListenGames = false;
 
 io.on('connection', (socket) => {
+    
 
     // Estructura 
     // id
@@ -75,10 +77,13 @@ io.on('connection', (socket) => {
      * - createAt: number (auto generado al ingresar al bote) / fecha para dar prioridad si lleva mucho tiempo esperando
      */
     socket.on('1_in_matchEngine_requestGame', (userRequestToPlay) => {
+        userRequestToPlay.time = Number(userRequestToPlay.time);
+        userRequestToPlay.elo = Number(userRequestToPlay.elo);
+        console.log('llega ------------- ', userRequestToPlay);
         ejectGameMatch(userRequestToPlay).then((result) => {
             gGames.push(result);
             io.emit('2_out_matchEngine_readyMatch', result);
-        });
+        }).catch(() => {});
     });
 
     // 3 cuando un usuario enviá una jugada
@@ -112,54 +117,65 @@ function ejectGameMatch(userRequestToPlay) {
 
         if (gBoat.length > 0) {
 
+            console.log('es mayor a cero ');
+
             // por tiempo
             let filtered = gBoat.filter(item => item.time === userRequestToPlay.time);
+
+            console.log('por tiempo ', filtered);
 
             // filtrar por color solo si el usuario selecciono un color
             if (userRequestToPlay.color !== 'random') {
                 // por color
                 filtered = filtered.filter(item => item.color !== userRequestToPlay.color);
+                console.log('por color ', filtered);
             }
 
             // por elo
             filtered = filtered.filter(item => (item.elo <= userRequestToPlay.elo + 100 && item.elo >= userRequestToPlay.elo - 100));
+            console.log('por elo ', filtered);
             // por idioma (no prioritario)
             const filteredLang = filtered.filter(item => item.lang === userRequestToPlay.lang);
             filtered = filteredLang.length > 0 ? filteredLang : filtered;
+            console.log('por idioma ', filtered);
             // por país (no prioritario)
             const filteredCountry = filtered.filter(item => item.country === userRequestToPlay.country);
             filtered = filteredCountry.length > 0 ? filteredCountry : filtered;
-
+            console.log('filtrado ', filtered.length);
             let match;
 
             if (filtered.length > 1) { // Si aun se tienen muchos prospectors, se elije uno al azar
                 match = filtered[Math.floor(Math.random() * filtered.length)];
             } else if (filtered.length === 1) {
                 match = filtered[0]; // si solo tiene uno, se toma
+                console.log('match', match);
             }
 
             if (match) {
                 // Aquí se debe organizar los colores
-                generateNewGame(match, userRequestToPlay).the((game) => {
+                generateNewGame(match, userRequestToPlay).then((game) => {
                     // Se elimina con quien se hizo match del bote
                     deleteItemBoat(match);
                     // finalmente se genera el nuevo juego que se emitirá
+                    console.log('se resuelve ', game);
                     resolve(game); // único resolve
                 });
             } else {
                 // No tiene nadie con quien hacer match, se incorpora al bote,
                 // y queda a la espera de que llegue un competidor
                 addToBoat(userRequestToPlay);
-                reject();
+                reject(false);
             }
-
-
+            
+            
         } else if (gBoat.length === 0 && gReadyListenBoat) { // si el bote esta vacio, y ya se consulto a firestore, simplemente se adiciona la solicitud al bote
             addToBoat(userRequestToPlay);
-            reject();
+            reject(false);
         } else {
             // escucha el bote de respaldo (es un inicio o un reinicio del server)
             listenFirestoreBoat();
+            addToBoat(userRequestToPlay);
+            reject(false);
         }
     });
 
@@ -187,7 +203,7 @@ function getRandomColor() {
 // TODO retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
 function generateNewGame(player1, player2) {
     return new Promise((resolve, reject) => {
-
+        console.log('armar nuevo juego!!!');
         // Se organizan los colores
         if (player1.color === 'random' && player2.color === 'random') {
             const randomColor = getRandomColor();
@@ -229,5 +245,6 @@ function saveMove(data3Receive) {
 // TODO escuchar un bote de respaldo en firestore
 // se hace por si se reinicia el servidor no se pierda el estado del bote
 function listenFirestoreBoat() {
+    gReadyListenBoat = true;
     // TODO: escuchar bote desde firestore y activar gReadyListenBoat
 }
