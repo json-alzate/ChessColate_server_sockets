@@ -31,7 +31,7 @@ La jugada se recibe por el socket [3_in_game_move](#3_in_game_movemove) se proce
 Se modifica la partida en firebase y se actualiza el reloj correspondiente.
 
 ## 2- Diagrama
-![Sockets diagrama](./docs/imgs/sockets_diagram.png"Socket diagram")
+![Sockets diagrama](./docs/imgs/sockets_diagram.png "Socket diagram")
 
 
 ## 3- Sockets
