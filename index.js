@@ -99,7 +99,7 @@ io.on('connection', (socket) => {
      */
     socket.on('3_in_game_move', (data3Receive) => {
         saveMove(data3Receive).then((moveSaved) => {
-            io.emit('4_out_game_ejectMove', moveSaved);
+            io.emit('4_out_game_move', moveSaved);
         });
     });
 
