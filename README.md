@@ -106,9 +106,14 @@ Emite la actualización del tiempo en un reloj
 
 #### Move
 ```
-    - uid: string //(auto generado)
+    - uid: string;
     - uidGame: string;
     - uidUser: string;
-    - move: string;
+    - from: string;
+    - to: string;
+    - fen: string;
+    - color: string;
+    - piece: string;
+    - sean: string;
     - createAt: number;
 ```

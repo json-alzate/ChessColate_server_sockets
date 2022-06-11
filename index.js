@@ -149,12 +149,19 @@ io.on('connection', (socket) => {
 
     // 3 cuando un usuario envía una jugada
     /**
-     * - uidUser
-     * - move
-     * - uidGame
+     * - uid: string;
+     * - uidGame: string;
+     * - uidUser: string;
+     * - from: number;
+     * - to: number;
+     * - fen: string;
+     * - color: string;
+     * - piece: string;
+     * - sean: string;
+     * - createAt: number;
      */
-    socket.on('3_in_game_move', (data3Receive) => {
-        saveMove(data3Receive).then((moveSaved) => {
+    socket.on('3_in_game_move', (move) => {
+        saveMove(move).then((moveSaved) => {
             io.emit('4_out_game_move', moveSaved);
         });
     });
@@ -312,8 +319,12 @@ function generateNewGame(player1, player2) {
 
 // TODO: debe retornar una promesa que se resuelva si se guarda la jugada 
 //  o error si la jugada es ilegal
-function saveMove(data3Receive) {
-
+function saveMove(move) {
+    return new Promise((resolve, reject) => {
+        console.log('guardar jugada!!!');
+        // TODO: logica para validar y guardar la jugada
+        resolve(move);
+    });
 }
 
 // ----------------------------------------------------------------------------
