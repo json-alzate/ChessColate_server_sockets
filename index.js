@@ -1,20 +1,21 @@
-var app = require('express')();
+const app = require('express')();
 const axios = require('axios').default; // http request
-var fs = require('fs');
+const fs = require('fs');
+
 
 /**
  * PRODUCCIÓN
  */
-var options = {
+const options = {
     key: fs.readFileSync('/etc/letsencrypt/live/chesscolate.json.com.co/privkey.pem'),
     cert: fs.readFileSync('/etc/letsencrypt/live/chesscolate.json.com.co/cert.pem'),
     ca: fs.readFileSync('/etc/letsencrypt/live/chesscolate.json.com.co/chain.pem')
 };
 
 
-var http = require('https').createServer(options, app);
+const http = require('https').createServer(options, app);
 
-var admin = require('firebase-admin');
+const admin = require('firebase-admin');
 /**
  * PRODUCCIÓN
  */
@@ -45,7 +46,7 @@ app.get('/', (req, res) => res.send('buuuu!'));
 
 /**
  * bote donde están las solicitudes de juego para emparejar 
- */ 
+ */
 const gBoat = [];
 
 /**
@@ -54,11 +55,33 @@ const gBoat = [];
 let gReadyListenBoat = false;
 
 // juegos en curso
+/**
+ * Listado de juegos emitidos al realizar match
+ */
 const gGames = [];
+/**
+ * Permite saber si ya se esta escuchando la collection de los juegos en firestore
+ */
 let gReadyListenGames = false;
 
+/**
+ * Almacena los relojes
+ *  
+    - uidGame: string;
+    - intervalClockWhiteCountDown: any;
+    - intervalClockWhite: any;
+    - intervalClockBlack: any;
+    - createAt: number;
+ */
+const gGamesClocks = [];
+
+/**
+ * El numero de segundos antes de que se cancele el juego si las blancas no mueven (milisegundos)
+ */
+const gTimerContDown = 20000;
+
 io.on('connection', (socket) => {
-    
+
 
     // Estructura 
     // id
@@ -85,13 +108,46 @@ io.on('connection', (socket) => {
         userRequestToPlay.time = Number(userRequestToPlay.time);
         userRequestToPlay.elo = Number(userRequestToPlay.elo);
         console.log('llega ------------- ', userRequestToPlay);
-        ejectGameMatch(userRequestToPlay).then((result) => {
-            gGames.push(result);
-            io.emit('2_out_matchEngine_readyMatch', result);
-        }).catch(() => {});
+
+        ejectGameMatch(userRequestToPlay).then((game) => {
+            gGames.push(game);
+            io.emit('2_out_matchEngine_readyMatch', game);
+            // TODO: se inicia el countdown para el blanco
+            let clock = gGamesClocks.find(item => item.uidGame === game.uid);
+            if (clock) {
+                let timerContDown = gTimerContDown;
+                const idIntervalCountDown = setInterval(() => {
+                    timerContDown = timerContDown - 1000;
+
+                    if (timerContDown === 0) {
+                        // TODO: se cancela el juego
+                        deleteGameClock(clock);
+                        console.log('se cancela el juego');
+                    }
+
+                    io.emit('5_out_clock_update', {
+                        uid: clock.uidGame,
+                        time: timerContDown,
+                        type: 'whiteCountDown'
+                    });
+
+                    console.log('emite el reloj  de countdown ', timerContDown);
+
+                }, 1000);
+
+                clock = {
+                    ...clock,
+                    intervalClockWhiteCountDown: idIntervalCountDown
+                };
+
+                updateClock(clock);
+
+            }
+        }).catch(() => { });
+
     });
 
-    // 3 cuando un usuario enviá una jugada
+    // 3 cuando un usuario envía una jugada
     /**
      * - uidUser
      * - move
@@ -113,6 +169,9 @@ http.listen(3000, () => {
 /**
  * Functions
  */
+
+// ----------------------------------------------------------------------------
+// Match Engine
 
 // Retorna una promesa que se resuelva si se hace el match y retorna el objeto del juego
 //  o error si no tiene usuario para emparejar
@@ -137,13 +196,16 @@ function ejectGameMatch(userRequestToPlay) {
             }
 
             // por elo
+            // TODO: validar con un if si tiene elo
             filtered = filtered.filter(item => (item.elo <= userRequestToPlay.elo + 100 && item.elo >= userRequestToPlay.elo - 100));
             console.log('por elo ', filtered);
             // por idioma (no prioritario)
+            // TODO: validar con un if si tiene el idioma
             const filteredLang = filtered.filter(item => item.lang === userRequestToPlay.lang);
             filtered = filteredLang.length > 0 ? filteredLang : filtered;
             console.log('por idioma ', filtered);
             // por país (no prioritario)
+            // TODO: validar con un if si tiene el país
             const filteredCountry = filtered.filter(item => item.country === userRequestToPlay.country);
             filtered = filteredCountry.length > 0 ? filteredCountry : filtered;
             console.log('filtrado ', filtered.length);
@@ -171,8 +233,8 @@ function ejectGameMatch(userRequestToPlay) {
                 addToBoat(userRequestToPlay);
                 reject(false);
             }
-            
-            
+
+
         } else if (gBoat.length === 0 && gReadyListenBoat) { // si el bote esta vació, y ya se consulto a firestore, simplemente se adiciona la solicitud al bote
             addToBoat(userRequestToPlay);
             reject(false);
@@ -186,6 +248,8 @@ function ejectGameMatch(userRequestToPlay) {
 
 }
 
+// ----------------------------------------------------------------------------
+// Boat
 function addToBoat(userRequestToPlay) {
     const toAddBoat = {
         ...userRequestToPlay,
@@ -200,10 +264,11 @@ function deleteItemBoat(match) {
     gBoat.splice(toDelete, 1);
 }
 
-// Genera un string con el valor 'white' o 'black'
-function getRandomColor() {
-    return Math.random() < 0.5 ? 'white' : 'black';
-}
+
+
+
+// ----------------------------------------------------------------------------
+// Game
 
 // TODO retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
 function generateNewGame(player1, player2) {
@@ -220,13 +285,22 @@ function generateNewGame(player1, player2) {
             player1.color = player2.color === 'white' ? 'black' : 'white';
         }
 
-        // FIXME solo para ejecutar pruebas 
+        const uid = createUid();
+
+        // crea el reloj para el juego
+        createGameClock(uid);
+
+        // TODO: crear instancia del juego
+
+        // : Game https://github.com/json-alzate/ChessColate_server_sockets#game
         const newGame = {
-            uid: String(new Date().getTime()),
+            uid,
             white: player1.color === 'white' ? player1 : player2,
             black: player2.color === 'black' ? player2 : player1,
-            time: player1.time,
-            createAt: new Date().getTime() 
+            uidUserWhite: player1.uidUser,
+            uidUserBlack: player2.uidUser,
+            timeControl: player1.time,
+            createAt: new Date().getTime()
         };
 
         resolve(newGame);
@@ -240,6 +314,77 @@ function generateNewGame(player1, player2) {
 //  o error si la jugada es ilegal
 function saveMove(data3Receive) {
 
+}
+
+// ----------------------------------------------------------------------------
+// Clocks
+
+// - type: 'white' | 'black' | 'whiteCountdown';
+/**
+ * Prepara un espacio para un reloj, y asi tener la referencia para iniciarlo o detenerlo
+ */
+function createGameClock(uidGame) {
+
+    const newClock = {
+        uidGame,
+        intervalClockWhiteCountDown: null,
+        intervalClockWhite: null,
+        intervalClockBlack: null,
+        createAt: new Date().getTime()
+    };
+
+    gGamesClocks.push(newClock);
+
+}
+
+
+/**
+ * Adiciona un reloj al array de relojes
+ * @param {*} clock 
+ */
+function addClock(clock) {
+    gGamesClocks.push(clock);
+}
+
+/**
+ * Elimina un reloj del arreglo de relojes
+ */
+function deleteGameClock(clock) {
+    const toDelete = gGamesClocks.findIndex(item => item.uid === clock.uid);
+
+    gGamesClocks[toDelete].intervalClockWhiteCountDown && clearInterval(gGamesClocks[toDelete].intervalClockWhiteCountDown);
+
+    gGamesClocks.splice(toDelete, 1);
+}
+
+
+function pauseClock(idInterval) {
+    clearInterval(idInterval);
+}
+
+/**
+ * Remplaza un reloj por otro en el arreglo de relojes
+ * @param {*} clock 
+ */
+function updateClock(clock) {
+    deleteGameClock(clock);
+    addClock(clock);
+}
+
+
+// ----------------------------------------------------------------------------
+// Utils
+
+// Genera un string con el valor 'white' o 'black'
+function getRandomColor() {
+    return Math.random() < 0.5 ? 'white' : 'black';
+}
+
+/**
+ * Genera un uid aleatorio
+ */
+function createUid() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
 

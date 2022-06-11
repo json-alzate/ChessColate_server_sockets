@@ -9,12 +9,14 @@
     - [2_out_matchEngine_readyMatch(game)):](#2_out_matchengine_readymatchgame)
     - [3_in_game_move(move):](#3_in_game_movemove)
     - [4_out_game_move(move):](#4_out_game_movemove)
+    - [5_out_clock_update(clock):](#5_out_clock_updateclock)
 - [4- Modelos](#4--modelos)
-    - [userRequestToPlay](#userrequesttoplay)
-    - [game](#game)
-    - [clock](#clock)
-    - [chessInstance](#chessinstance)
-    - [move](#move)
+    - [UserRequestToPlay](#userrequesttoplay)
+    - [Game](#game)
+    - [Clock](#clock)
+    - [OutClockUpdate](#outclockupdate)
+    - [ChessInstance](#chessinstance)
+    - [Move](#move)
 
 
 
@@ -47,9 +49,15 @@ Recibe la jugada que debe ser procesada para una partida en especifico
 #### 4_out_game_move([move](#move)):
 Emite una jugada realizada en una partida
 
+#### 5_out_clock_update([clock](#outclockupdate)):
+Emite la actualización del tiempo en un reloj
+
+
+
+
 ## 4- Modelos
 
-#### userRequestToPlay
+#### UserRequestToPlay
 ```
      - uidUser: string;
      - time: number; // tiempo para el juego ejm: 10 minutes
@@ -60,26 +68,34 @@ Emite una jugada realizada en una partida
      - createAt: number; //(auto generado al ingresar al bote) / fecha para dar prioridad si lleva mucho tiempo esperando
 ```
 
-#### game 
+#### Game 
 ```
     - uid: string //(auto generado)
-    - uidUserWhite: string;
-    - uidUserBlack: string;
+    - white: UserRequestToPlay;
+    - black: UserRequestToPlay;
     - timeControl: number; // tiempo para el juego ejm: 10 minutes
     - createAt: number;
-    - uidClock: string; //(auto generado)
     - uidChessInstance: string; //(auto generado)
 ```
 
-#### clock
+#### Clock
 ```
-    - uid: string //(auto generado)
     - uidGame: string;
-    - timerWhite: any; // objeto timeOut
-    - timerBlack: any; // objeto timeOut
+    - intervalClockWhiteCountDown: any;
+    - intervalClockWhite: any;
+    - intervalClockBlack: any;
+    - createAt: number;
 ```
 
-#### chessInstance
+#### OutClockUpdate
+```
+    - uid: string;
+    - time: number;
+    - type: 'white' | 'black' | 'whiteCountDown';
+```
+
+
+#### ChessInstance
 ```
     - uid: string //(auto generado)
     - chessInstance: any;
@@ -88,7 +104,7 @@ Emite una jugada realizada en una partida
     - moves: string[];
 ```
 
-#### move
+#### Move
 ```
     - uid: string //(auto generado)
     - uidGame: string;
