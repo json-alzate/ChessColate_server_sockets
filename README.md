@@ -10,9 +10,11 @@
     - [3_in_game_move(move):](#3_in_game_movemove)
     - [4_out_game_move(move):](#4_out_game_movemove)
     - [5_out_clock_update(clock):](#5_out_clock_updateclock)
+    - [6_out_game_end(endGame):](#6_out_game_endendgame)
 - [4- Modelos](#4--modelos)
     - [UserRequestToPlay](#userrequesttoplay)
     - [Game](#game)
+    - [EndGame](#endgame)
     - [Clock](#clock)
     - [OutClockUpdate](#outclockupdate)
     - [ChessInstance](#chessinstance)
@@ -52,6 +54,8 @@ Emite una jugada realizada en una partida
 #### 5_out_clock_update([clock](#outclockupdate)):
 Emite la actualización del tiempo en un reloj
 
+#### 6_out_game_end([endGame](#endgame)):
+
 
 
 
@@ -76,6 +80,13 @@ Emite la actualización del tiempo en un reloj
     - timeControl: number; // tiempo para el juego ejm: 10 minutes
     - createAt: number;
     - uidChessInstance: string; //(auto generado)
+```
+
+#### EndGame
+```
+    - uid: string;
+    - uidGame: string;
+    - motive: string;
 ```
 
 #### Clock

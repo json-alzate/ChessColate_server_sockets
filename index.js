@@ -120,9 +120,19 @@ io.on('connection', (socket) => {
                     timerContDown = timerContDown - 1000;
 
                     if (timerContDown === 0) {
-                        // TODO: se cancela el juego
-                        deleteGameClock(clock);
                         console.log('se cancela el juego');
+
+                        deleteGameClock(clock);
+                        const newEndGame = {
+                            uid: createUid(),
+                            uidGame: clock.uidGame,
+                            motive: 'whiteCountdown'
+                        };
+
+                        io.emit('6_out_game_end', newEndGame);
+
+                        // TODO: Guardar el log del fin del juego en firestore
+
                     }
 
                     io.emit('5_out_clock_update', {
@@ -166,7 +176,7 @@ io.on('connection', (socket) => {
         // - detiene el countdown para las blancas en caso de existir
         // - 
         checkClock(move);
-        
+
         saveMove(move).then((moveSaved) => {
             io.emit('4_out_game_move', moveSaved);
         });
