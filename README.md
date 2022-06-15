@@ -91,7 +91,7 @@ Emite la actualización del tiempo en un reloj
 ```
     - uid: string;
     - time: number;
-    - type: 'white' | 'black' | 'whiteCountDown';
+    - type: 'white' | 'black' | 'whiteCountDown' | 'blackCountDown';
 ```
 
 
