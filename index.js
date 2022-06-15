@@ -126,7 +126,7 @@ io.on('connection', (socket) => {
                     }
 
                     io.emit('5_out_clock_update', {
-                        uid: clock.uidGame,
+                        uid: clock.uidGame, // con esto se escucha en los clientes (uid del juego)
                         time: timerContDown,
                         type: 'whiteCountDown'
                     });
@@ -161,6 +161,12 @@ io.on('connection', (socket) => {
      * - createAt: number;
      */
     socket.on('3_in_game_move', (move) => {
+        // TODO: validar jugada
+
+        // - detiene el countdown para las blancas en caso de existir
+        // - 
+        checkClock(move);
+        
         saveMove(move).then((moveSaved) => {
             io.emit('4_out_game_move', moveSaved);
         });
@@ -362,9 +368,7 @@ function addClock(clock) {
  */
 function deleteGameClock(clock) {
     const toDelete = gGamesClocks.findIndex(item => item.uid === clock.uid);
-
     gGamesClocks[toDelete].intervalClockWhiteCountDown && clearInterval(gGamesClocks[toDelete].intervalClockWhiteCountDown);
-
     gGamesClocks.splice(toDelete, 1);
 }
 
