@@ -396,6 +396,27 @@ function updateClock(clock) {
     addClock(clock);
 }
 
+/**
+ * - Valida si el blanco tiene un countdown activo y lo detiene, y crea uno nuevo para el negro. => return
+ * - Si el negro tiene un countDown activo, lo detiene y crea un reloj para el blanco y lo inicia
+ * - Si el blanco tiene 
+ * @param {*} move 
+ */
+function checkClock(move) {
+
+
+    if (move.color === 'w') {
+
+        // Validar si el blanco tiene countDown activo
+        const haveCountDown = gGamesClocks.find(item => item.uidGame === move.uidGame && item.intervalClockWhiteCountDown);
+
+    } else if (move.color === 'b') {
+
+    }
+
+
+}
+
 
 // ----------------------------------------------------------------------------
 // Utils
