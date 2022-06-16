@@ -124,8 +124,8 @@ io.on('connection', (socket) => {
 
                         deleteGameClock(clock);
                         const newEndGame = {
-                            uid: createUid(),
-                            uidGame: clock.uidGame,
+                            uid: clock.uidGame,
+                            result: '*',
                             motive: 'whiteCountdown'
                         };
 

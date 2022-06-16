@@ -85,7 +85,6 @@ Emite la actualización del tiempo en un reloj
 #### EndGame
 ```
     - uid: string;
-    - uidGame: string;
     - motive: string;
 ```
 
