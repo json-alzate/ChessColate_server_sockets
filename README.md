@@ -92,6 +92,7 @@ Emite la actualización del tiempo en un reloj
 ```
     - uidGame: string;
     - intervalClockWhiteCountDown: any;
+    - intervalClockBlackCountDown: any;
     - intervalClockWhite: any;
     - intervalClockBlack: any;
     - createAt: number;
