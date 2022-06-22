@@ -197,6 +197,7 @@ http.listen(3000, () => {
 // - motive: string; // 'blackCountdown' | 'whiteCountdown' | 'blackOut' | 'whiteOut' | 'whiteResign' | 'blackResign' | '#' | 'whiteTimeOut' | 'blackTimeOut'
 function emitEndGame(newEndGame) {
     io.emit('6_out_game_end', newEndGame);
+    // TODO: Guardar el log del fin del juego en firestore
 }
 
 // ----------------------------------------------------------------------------
@@ -445,7 +446,7 @@ function checkClock(move) {
             let timerContDown = gTimerContDown;
             gGamesClocks[indexHaveCountDown].intervalClockBlackCountDown = setInterval(() => {
                 timerContDown = timerContDown - 1000;
-                console.log('timerContDownBlack', timerContDown);
+
                 if (timerContDown <= 0) {
                     deleteGameClock(gGamesClocks[indexHaveCountDown]);
                     const newEndGame = {
@@ -455,8 +456,6 @@ function checkClock(move) {
                     };
 
                     emitEndGame(newEndGame);
-
-                    // TODO: Guardar el log del fin del juego en firestore
 
                 }
 
@@ -479,15 +478,17 @@ function checkClock(move) {
         const indexHaveCountDown = gGamesClocks.findIndex(item => item.uidGame === move.uidGame && item.intervalClockBlackCountDown);
         // si tiene countDow se detiene, y se crea y activa el reloj para el blanco
         if (indexHaveCountDown >= 0) {
-            clearInterval(gGamesClocks[indexHaveCountDown].intervalClockBlackCountDown);
+
             const clock = gGamesClocks[indexHaveCountDown];
-            let timerContDown = 100000; // TODO obtener el tiempo del juego en milliseconds
+
+            clearInterval(clock.intervalClockBlackCountDown);
+            let timerContDown = clock.totalTime;
 
             gGamesClocks[indexHaveCountDown].intervalClockWhite = setInterval(() => {
                 timerContDown = timerContDown - 1000;
 
                 if (timerContDown <= 0) {
-                    deleteGameClock(gGamesClocks[indexHaveCountDown]);
+                    deleteGameClock(clock);
                     const newEndGame = {
                         uid: clock.uidGame,
                         result: '0-1',
@@ -495,8 +496,6 @@ function checkClock(move) {
                     };
 
                     emitEndGame(newEndGame);
-
-                    // TODO: Guardar el log del fin del juego en firestore
                 }
 
                 emitUpdateClock({
