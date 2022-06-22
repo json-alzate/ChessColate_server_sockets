@@ -115,23 +115,22 @@ io.on('connection', (socket) => {
             io.emit('2_out_matchEngine_readyMatch', game);
 
             // se inicia el countdown para el blanco
-            let clock = gGamesClocks.find(item => item.uidGame === game.uid);
-            if (clock) {
+            let clockIndex = gGamesClocks.findIndex(item => item.uidGame === game.uid);
+            if (clockIndex >= 0) {
                 let timerContDown = gTimerContDown;
                 const idIntervalCountDown = setInterval(() => {
                     timerContDown = timerContDown - 1000;
 
                     if (timerContDown === 0) {
-                        console.log('se cancela el juego');
 
-                        deleteGameClock(clock);
+                        deleteGameClock(gGamesClocks[clockIndex]);
                         const newEndGame = {
                             uid: clock.uidGame,
                             result: '*',
                             motive: 'whiteCountdown'
                         };
 
-                        io.emit('6_out_game_end', newEndGame);
+                        emitEndGame(newEndGame);
 
                         // TODO: Guardar el log del fin del juego en firestore
 
@@ -143,16 +142,11 @@ io.on('connection', (socket) => {
                         type: 'whiteCountDown'
                     });
 
-                    console.log('emite el reloj  de countdown ', timerContDown);
 
                 }, 1000);
 
-                clock = {
-                    ...clock,
-                    intervalClockWhiteCountDown: idIntervalCountDown
-                };
 
-                updateClock(clock);
+                gGamesClocks[clockIndex].intervalClockWhiteCountDown = idIntervalCountDown;
 
             }
         }).catch(() => { });
@@ -192,6 +186,32 @@ http.listen(3000, () => {
 });
 
 /**
+ * Emisores
+ */
+
+// ----------------------------------------------------------------------------
+// 6_out_game_end
+
+// - uid: string;
+// - result: string; // '1-0' | '0-1' | '1/5 1/5' | '*'
+// - motive: string; // 'blackCountdown' | 'whiteCountdown' | 'blackOut' | 'whiteOut' | 'whiteResign' | 'blackResign' | '#' | 'whiteTimeOut' | 'blackTimeOut'
+function emitEndGame(newEndGame) {
+    io.emit('6_out_game_end', newEndGame);
+}
+
+// ----------------------------------------------------------------------------
+// 5_out_clock_update
+// - uidGame: string; // con esto se escucha en los clientes (uid del juego)
+// - intervalClockWhiteCountDown?: any;
+// - intervalClockBlackCountDown?: any;
+// - intervalClockWhite?: any;
+// - intervalClockBlack>: any;
+// - createAt: number; // para firestore
+function emitUpdateClock(clockUpdate) {
+    io.emit('5_out_clock_update', clockUpdate);
+}
+
+/**
  * Functions
  */
 
@@ -206,41 +226,33 @@ function ejectGameMatch(userRequestToPlay) {
 
         if (gBoat.length > 0) {
 
-            console.log('es mayor a cero ');
 
             // por tiempo
             let filtered = gBoat.filter(item => item.time === userRequestToPlay.time);
-
-            console.log('por tiempo ', filtered);
 
             // filtrar por color solo si el usuario selecciono un color
             if (userRequestToPlay.color !== 'random') {
                 // por color
                 filtered = filtered.filter(item => item.color !== userRequestToPlay.color);
-                console.log('por color ', filtered);
             }
 
             // por elo
             // TODO: validar con un if si tiene elo
             filtered = filtered.filter(item => (item.elo <= userRequestToPlay.elo + 100 && item.elo >= userRequestToPlay.elo - 100));
-            console.log('por elo ', filtered);
             // por idioma (no prioritario)
             // TODO: validar con un if si tiene el idioma
             const filteredLang = filtered.filter(item => item.lang === userRequestToPlay.lang);
             filtered = filteredLang.length > 0 ? filteredLang : filtered;
-            console.log('por idioma ', filtered);
             // por país (no prioritario)
             // TODO: validar con un if si tiene el país
             const filteredCountry = filtered.filter(item => item.country === userRequestToPlay.country);
             filtered = filteredCountry.length > 0 ? filteredCountry : filtered;
-            console.log('filtrado ', filtered.length);
             let match;
 
             if (filtered.length > 1) { // Si aun se tienen muchos prospectors, se elije uno al azar
                 match = filtered[Math.floor(Math.random() * filtered.length)];
             } else if (filtered.length === 1) {
                 match = filtered[0]; // si solo tiene uno, se toma
-                console.log('match', match);
             }
 
             if (match) {
@@ -249,7 +261,6 @@ function ejectGameMatch(userRequestToPlay) {
                     // Se elimina con quien se hizo match del bote
                     deleteItemBoat(match);
                     // finalmente se genera el nuevo juego que se emitirá
-                    console.log('se resuelve ', game);
                     resolve(game); // único resolve
                 });
             } else {
@@ -298,7 +309,6 @@ function deleteItemBoat(match) {
 // retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
 function generateNewGame(player1, player2) {
     return new Promise((resolve, reject) => {
-        console.log('armar nuevo juego!!!');
         // Se organizan los colores
         if (player1.color === 'random' && player2.color === 'random') {
             const randomColor = getRandomColor();
@@ -313,7 +323,7 @@ function generateNewGame(player1, player2) {
         const uid = createUid();
 
         // crea el reloj para el juego
-        createGameClock(uid);
+        createGameClock(uid, player1.time, player1.timeIncrement);
 
         // TODO: crear instancia del juego
 
@@ -352,7 +362,7 @@ function saveMove(move) {
 /**
  * Prepara un espacio para un reloj, y asi tener la referencia para iniciarlo o detenerlo
  */
-function createGameClock(uidGame) {
+function createGameClock(uidGame, totalTime, timeIncrement) {
 
     const newClock = {
         uidGame,
@@ -360,6 +370,8 @@ function createGameClock(uidGame) {
         intervalClockBlackCountDown: null,
         intervalClockWhite: null,
         intervalClockBlack: null,
+        totalTime,
+        timeIncrement,
         createAt: new Date().getTime()
     };
 
@@ -415,7 +427,7 @@ function updateClock(clock) {
 /**
  * - Valida si el blanco tiene un countdown activo y lo detiene, y crea uno nuevo para el negro. => return
  * - Si el negro tiene un countDown activo, lo detiene y crea un reloj para el blanco y lo inicia
- * - Si el blanco tiene 
+ * - Si el blanco tiene un countDown activo, lo detiene y crea un reloj para el juego como tal iniciando el contador para el blanco
  * @param {*} move 
  */
 function checkClock(move) {
@@ -442,13 +454,13 @@ function checkClock(move) {
                         motive: 'blackCountdown'
                     };
 
-                    io.emit('6_out_game_end', newEndGame);
+                    emitEndGame(newEndGame);
 
                     // TODO: Guardar el log del fin del juego en firestore
 
                 }
 
-                io.emit('5_out_clock_update', {
+                emitUpdateClock({
                     uid: clock.uidGame, // con esto se escucha en los clientes (uid del juego)
                     time: timerContDown,
                     type: 'blackCountDown'
@@ -456,8 +468,50 @@ function checkClock(move) {
 
             }, 1000);
 
+        } else {
+            // Si no tiene countDow debe ser un juego iniciado, entonces se busca el reloj  para detenerlo el del blanco y activar el del negro
+            // Si el negro no tiene uno se crea y se activa
+            // TODO: 
         }
     } else if (move.color === 'b') {
+
+        // Validar si el negro tiene countDown activo
+        const indexHaveCountDown = gGamesClocks.findIndex(item => item.uidGame === move.uidGame && item.intervalClockBlackCountDown);
+        // si tiene countDow se detiene, y se crea y activa el reloj para el blanco
+        if (indexHaveCountDown >= 0) {
+            clearInterval(gGamesClocks[indexHaveCountDown].intervalClockBlackCountDown);
+            const clock = gGamesClocks[indexHaveCountDown];
+            let timerContDown = 100000; // TODO obtener el tiempo del juego en milliseconds
+
+            gGamesClocks[indexHaveCountDown].intervalClockWhite = setInterval(() => {
+                timerContDown = timerContDown - 1000;
+
+                if (timerContDown <= 0) {
+                    deleteGameClock(gGamesClocks[indexHaveCountDown]);
+                    const newEndGame = {
+                        uid: clock.uidGame,
+                        result: '0-1',
+                        motive: 'whiteTimeOut'
+                    };
+
+                    emitEndGame(newEndGame);
+
+                    // TODO: Guardar el log del fin del juego en firestore
+                }
+
+                emitUpdateClock({
+                    uid: clock.uidGame, // con esto se escucha en los clientes (uid del juego)
+                    time: timerContDown,
+                    type: 'white' // Se indica que es el reloj del blanco el que esta corriendo
+                });
+
+
+            }, 1000);
+        } else {
+            // Si no tiene countDow debe ser un juego iniciado, entonces se busca el reloj para detenerlo el del negro y activar el del blanco
+            // Si el negro no tiene uno se crea y se activa
+            // TODO: 
+        }
 
     }
 

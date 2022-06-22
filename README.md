@@ -65,6 +65,7 @@ Emite la actualización del tiempo en un reloj
 ```
      - uidUser: string;
      - time: number; // tiempo para el juego ejm: 10 minutes
+     - timeIncrement: number; // Cantidad de milisegundos para incrementar en cada jugada
      - lang: string; // 2 caracteres
      - elo: number;
      - color: white | black | random;
@@ -85,7 +86,8 @@ Emite la actualización del tiempo en un reloj
 #### EndGame
 ```
     - uid: string;
-    - motive: string;
+    - result: string; // '1-0' | '0-1' | '1/5 1/5' | '*'
+    - motive: string; // 'blackCountdown' | 'whiteCountdown' | 'blackOut' | 'whiteOut' | 'whiteResign' | 'blackResign' | '#' | 'whiteTimeOut' | 'blackTimeOut'
 ```
 
 #### Clock
@@ -95,6 +97,8 @@ Emite la actualización del tiempo en un reloj
     - intervalClockBlackCountDown: any;
     - intervalClockWhite: any;
     - intervalClockBlack: any;
+    - totalTime: number;
+    - timeIncrement: number;
     - createAt: number;
 ```
 
