@@ -295,7 +295,7 @@ function deleteItemBoat(match) {
 // ----------------------------------------------------------------------------
 // Game
 
-// TODO retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
+// retorna una promesa que retorna el objeto de un nuevo juego entre dos jugadores
 function generateNewGame(player1, player2) {
     return new Promise((resolve, reject) => {
         console.log('armar nuevo juego!!!');
@@ -322,8 +322,8 @@ function generateNewGame(player1, player2) {
             uid,
             white: player1.color === 'white' ? player1 : player2,
             black: player2.color === 'black' ? player2 : player1,
-            uidUserWhite: player1.uidUser,
-            uidUserBlack: player2.uidUser,
+            uidUserWhite: player1.color === 'white' ? player1.uidUser : player2.uidUser,
+            uidUserBlack: player1.color === 'black' ? player1.uidUser : player2.uidUser,
             timeControl: player1.time,
             createAt: new Date().getTime()
         };
