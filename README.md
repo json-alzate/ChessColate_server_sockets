@@ -97,6 +97,8 @@ Emite la actualización del tiempo en un reloj
     - intervalClockBlackCountDown: any;
     - intervalClockWhite: any;
     - intervalClockBlack: any;
+    - currentTimeWhite: number;
+    - currentTimeBlack: number;
     - totalTime: number;
     - timeIncrement: number;
     - createAt: number;

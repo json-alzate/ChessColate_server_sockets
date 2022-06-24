@@ -118,12 +118,13 @@ io.on('connection', (socket) => {
             let clockIndex = gGamesClocks.findIndex(item => item.uidGame === game.uid);
             if (clockIndex >= 0) {
                 let timerContDown = gTimerContDown;
+                const clock = gGamesClocks[clockIndex];
                 const idIntervalCountDown = setInterval(() => {
                     timerContDown = timerContDown - 1000;
 
                     if (timerContDown === 0) {
 
-                        deleteGameClock(gGamesClocks[clockIndex]);
+                        deleteGameClock(clock);
                         const newEndGame = {
                             uid: clock.uidGame,
                             result: '*',
@@ -372,6 +373,8 @@ function createGameClock(uidGame, totalTime, timeIncrement) {
         intervalClockWhite: null,
         intervalClockBlack: null,
         totalTime,
+        currentTimeWhite: totalTime,
+        currentTimeBlack: totalTime,
         timeIncrement,
         createAt: new Date().getTime()
     };
@@ -414,16 +417,6 @@ function pauseClock(idInterval) {
     clearInterval(idInterval);
 }
 
-/**
- * Remplaza un reloj por otro en el arreglo de relojes
- * @param {*} clock 
- */
-function updateClock(clock) {
-    // TODO: logica para actualizar el reloj
-    // de esta manera puede ocasionar bugs?
-    deleteGameClock(clock);
-    addClock(clock);
-}
 
 /**
  * - Valida si el blanco tiene un countdown activo y lo detiene, y crea uno nuevo para el negro. => return
@@ -468,9 +461,40 @@ function checkClock(move) {
             }, 1000);
 
         } else {
-            // Si no tiene countDow debe ser un juego iniciado, entonces se busca el reloj  para detenerlo el del blanco y activar el del negro
-            // Si el negro no tiene uno se crea y se activa
-            // TODO: 
+            // Si no tiene countDow debe ser un juego iniciado, 
+            // entonces se busca el reloj  para detenerlo el del blanco y activar el del negro
+
+            const indexClock = gGamesClocks.findIndex(item => item.uidGame === move.uidGame);
+            if (indexClock >= 0) {
+                clearInterval(gGamesClocks[indexClock].intervalClockWhite);
+                const clock = gGamesClocks[indexClock];
+
+                let timerBlackDown = clock.currentTimeBlack;
+                gGamesClocks[indexClock].intervalClockBlack = setInterval(() => {
+                    timerBlackDown = timerBlackDown - 1000;
+                    gGamesClocks[indexClock].currentTimeBlack = timerBlackDown;
+
+                    if (timerBlackDown <= 0) {
+                        clearInterval(gGamesClocks[indexClock].intervalClockBlack);
+                        deleteGameClock(gGamesClocks[indexClock]);
+                        const newEndGame = {
+                            uid: clock.uidGame,
+                            result: '1-0',
+                            motive: 'blackTimeOut'
+                        };
+
+                        emitEndGame(newEndGame);
+                    }
+
+                    emitUpdateClock({
+                        uid: clock.uidGame, // con esto se escucha en los clientes (uid del juego)
+                        time: timerBlackDown,
+                        type: 'black'
+                    });
+
+                }, 1000);
+
+            }
         }
     } else if (move.color === 'b') {
 
@@ -486,8 +510,9 @@ function checkClock(move) {
 
             gGamesClocks[indexHaveCountDown].intervalClockWhite = setInterval(() => {
                 timerContDown = timerContDown - 1000;
-
+                clock.currentTimeWhite = timerContDown;
                 if (timerContDown <= 0) {
+                    clearInterval(gGamesClocks[indexHaveCountDown].intervalClockWhite)
                     deleteGameClock(clock);
                     const newEndGame = {
                         uid: clock.uidGame,
@@ -509,7 +534,39 @@ function checkClock(move) {
         } else {
             // Si no tiene countDow debe ser un juego iniciado, entonces se busca el reloj para detenerlo el del negro y activar el del blanco
             // Si el negro no tiene uno se crea y se activa
-            // TODO: 
+            const indexClock = gGamesClocks.findIndex(item => item.uidGame === move.uidGame);
+            if (indexClock >= 0) {
+                clearInterval(gGamesClocks[indexClock].intervalClockBlack);
+                const clock = gGamesClocks[indexClock];
+
+                let timerWhiteDown = clock.currentTimeWhite;
+                gGamesClocks[indexClock].intervalClockWhite = setInterval(() => {
+                    timerWhiteDown = timerWhiteDown - 1000;
+                    gGamesClocks[indexClock].currentTimeWhite = timerWhiteDown;
+
+                    if (timerWhiteDown <= 0) {
+                        clearInterval(gGamesClocks[indexClock].intervalClockWhite);
+                        deleteGameClock(gGamesClocks[indexClock]);
+                        const newEndGame = {
+                            uid: clock.uidGame,
+                            result: '0-1',
+                            motive: 'whiteTimeOut'
+                        };
+
+                        emitEndGame(newEndGame);
+                    }
+
+                    emitUpdateClock({
+                        uid: clock.uidGame, // con esto se escucha en los clientes (uid del juego)
+                        time: timerWhiteDown,
+                        type: 'white'
+                    });
+
+                }, 1000);
+
+            }
+
+
         }
 
     }
