@@ -434,6 +434,7 @@ function checkClock(move) {
         // si tiene countDown, se detiene y se crea uno para las negras
         if (indexHaveCountDown >= 0) {
             clearInterval(gGamesClocks[indexHaveCountDown].intervalClockWhiteCountDown);
+            gGamesClocks[indexHaveCountDown].intervalClockWhiteCountDown = null;
             const clock = gGamesClocks[indexHaveCountDown];
 
             let timerContDown = gTimerContDown;
@@ -506,6 +507,7 @@ function checkClock(move) {
             const clock = gGamesClocks[indexHaveCountDown];
 
             clearInterval(clock.intervalClockBlackCountDown);
+            gGamesClocks[indexHaveCountDown].intervalClockBlackCountDown = null;
             let timerContDown = clock.totalTime;
 
             gGamesClocks[indexHaveCountDown].intervalClockWhite = setInterval(() => {
